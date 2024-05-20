@@ -14,8 +14,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import GridSearchCV
 from tabulate import tabulate
+from sklearn.metrics import mean_squared_error, accuracy_score
 
+import pandas as pd
 
+pd.set_option('display.max_rows', None)   # Display all rows
+pd.set_option('display.max_columns', None)  # Display all columns
 
 # The data was downloaded from the SMU ___ website and then the file paths for both files are a assigned a variable (filepath and filepath2).
 
@@ -24,8 +28,17 @@ filepath2 = "/Users/tmc/Desktop/MS_SMU_Admin/05_2024Summer/QUANTIFIYING_TW/02_mo
 
 # Now that the the files are assigned a variable name, the data is then converted to a pandas dataframe using the pd.read_csv function. 
 
+# excel 1
 traincsv = pd.read_csv(filepath)
+traincsv.info()
+traincsv.dtypes
+traincsv.shape
+traincsv.describe()
+# excel 2 
 uniquemcsv = pd.read_csv(filepath2)
+uniquemcsv.info()
+uniquemcsv.dtypes
+uniquemcsv.shape
 
 # Once the data was loaded, the columns for each file were identified. The data is clean and there are no missing values so no imputation is needed. To verify there are no missing values we use the isnull() function.  Missing values can create errors when passing the data training a model. 
     
@@ -46,7 +59,7 @@ df2_unique.columns
 
 joined_df = pd.concat([traincsv, df2_unique], axis=1)
 print(joined_df)
-pd.set_option('display.max_columns', None)
+# pd.set_option('display.max_columns', None)
 print(joined_df.head(10))
 print(joined_df.shape)
 print(joined_df.columns)
@@ -55,7 +68,6 @@ print(joined_df.columns)
 #look at your data
 joined_df.describe()
 joined_df.info()
-joined_df.shape
 joined_df.dtypes
 joined_df.shape
 # look at correlation 
@@ -80,45 +92,64 @@ plt.show()
 
 # We have 167 columns and visualizing them via a histogram individually is not the not the most efficient way to gain insights into the data. Instead the describe function is utilized which provides summary statistics for each feature in the dataframe. The output is transposed to provide easier viewing but it still did not look quite right for a report, so after some investigating a package called tabulate was utilized to create a table that was more appropriate for the report and the number of decimal points were reduced to two. 
 
-pd.set_option('display.max_rows', None)   # Show all rows
-pd.set_option('display.max_columns', None)  # Show all columns
-pd.set_option('display.width', None)       # Don't wrap columns
 
-plt.hist(joined_features, bins=10)
-plt.show()
+# plt.hist(joined_features, bins=10)
+# plt.show()
+# Calculate correlations for your DataFrame
+# lets review the correlation structure of the variables to the target
+correlations = joined_df.corr()
+
+# Filter for correlations with the target variable above 0.8
+target_correlations = correlations['critical_temp']
+target_correlations = target_correlations[target_correlations.abs() > 0.5]
+top_correlations = target_correlations.sort_values(ascending=False)[:20]
+
+# Format the result for better display (with only two columns)
+top_correlations_df = pd.DataFrame(top_correlations).reset_index()
+top_correlations_df.columns = ['Feature', 'Correlation']
+
+# Print the table with top correlations
+print(tabulate(top_correlations_df, headers='keys', tablefmt='psql', floatfmt=".2f"))
+
 
 joined_features.describe().T
 
 summary_stats = joined_features.describe().T.applymap(lambda x: f"{x:.2f}")  # Format data
 print(tabulate(summary_stats, headers='keys', tablefmt='psql', floatfmt=".2f"))  
 
+summary_stats_top10 = summary_stats.iloc[:10] 
+print(tabulate(summary_stats_top10, headers='keys', tablefmt='psql', floatfmt=".2f"))  
+
 # The resulting table illustrates that the features need to be normalized as we have a wide range between min and max values as well as high standard deviations. To address the wide spread in values and variation in averages for the features the standard scaler package was utilized so that the models will not give undue importance to features with larger values. The scaling will transform the features into a comparable range with a mean of zero and a standard deviation of one. By scaling the data our models should theoretically perform better as the models assumes that the features are centered around zero and hae a similar scale.  
 
 scale = StandardScaler()
 X_scaled = pd.DataFrame(scale.fit_transform(joined_features))
-plt.hist(X_scaled, bins=10)
-plt.show()
+# plt.hist(X_scaled, bins=10)
+# plt.show()
 summary_stats_scaled = X_scaled.describe().T.applymap(lambda x: f"{x:.2f}")  # Format data
 print(tabulate(summary_stats_scaled, headers='keys', tablefmt='psql', floatfmt=".2f"))  
 
 
+summary_stats_scaled_top10 = summary_stats_scaled.iloc[:10] 
+print(tabulate(summary_stats_scaled_top10, headers='keys', tablefmt='psql', floatfmt=".2f"))  
 
-#### TIm you are here now you are ready to do L1, then the next two models. Try to update teh code below and instead use grid search cv 
-# 11 - lasso regularization 
+
+
 
 # In creating a linear model using lasso (l1 regularization), the alpha hyperparameter is the most critical parameter to explore. The alpha parameter controls the regularlization strength with higher values reducing the least important coefficients to zero, hence feature selection. The max-iter is another parameter that can be used to optimize the algorithm and was adjusted so that model convereged. 
 # To perform a grid search on the regularlization strength, the GridSearchCV class was utilized with the scoring metric negative mean squared error to minimize the MSE. The score generated is then converted back to MSE by taking the absolute value to make it more interpratble. 
 
+#############################################################
 # 01 Lasso 
-
+#############################################################
 import numpy as np
 from sklearn.model_selection import GridSearchCV, KFold
 from sklearn.linear_model import Lasso
-alphas = np.logspace(-4, 1, 50) # going from 10^4 to 10^1 with 50 samples in logspace
+alphas = np.logspace(-6, 1, 50) # going from 10^6 to 10^1 with 50 samples in logspace
 # Define the Lasso model
-l1_model = Lasso(max_iter=2000) 
-l1_model = Lasso(alpha=1, max_iter=2000) 
- 
+# l1_model = Lasso(max_iter=2000) 
+l1_model = Lasso(alpha=1, max_iter=2000, random_state=1) 
+
 # Create the parameter grid for GridSearchCV
 param_grid = {'alpha': alphas}
 grid_search = GridSearchCV(l1_model, param_grid, scoring='neg_mean_squared_error', cv=5, n_jobs=-1)
@@ -133,10 +164,7 @@ best_score = abs(grid_search.best_score_)
 feature_importances = pd.DataFrame({'Feature': joined_features.columns, 'Importance': np.abs(best_model.coef_)})
 top_5_features = feature_importances.nlargest(5, 'Importance') 
 
-# Print results
-# print(f"Best alpha: {best_alpha}")
-# print(f"Best model coefficients: {best_model.coef_}")
-# print(f"Best model MSE: {best_score}")
+
 results_data = [
     ["Best Alpha", best_alpha],
     ["Best Model Coefficients", best_model.coef_],
@@ -145,38 +173,158 @@ results_data = [
 headers = ["Metric: abs(MSE)", "Score"]
 print(tabulate(results_data, headers=headers, tablefmt="fancy_grid"))
 
-# for _, row in top_5_features.iterrows():  # Iterate over the rows of the DataFrame
-#     print(f"- {row['Feature']}: {row['Importance']:.4f}")  # Print both feature name and coefficient
-
-# Prepare data for tabulate
-table_data = top_5_features.values.tolist()  # Convert DataFrame to list of lists
+table_data = top_5_features.values.tolist() 
 headers = top_5_features.columns.tolist()  # Get column names as headers
 
-# Print results
 print(f"Best alpha: {best_alpha:.6f}")
 print(f"Best model MSE: {best_score:.4f}")
 print("\nTop 5 Features:")
 print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))  
 
-
-# Prepare data for tabulate
 table_data = [
     ["Best Alpha", best_alpha],
     ["Best Model MSE", best_score]
 ]
-
 # Add top 5 features to the table
 for _, row in top_5_features.iterrows():
     table_data.append([row['Feature'], row['Importance']])
-
 headers = ["Metric/Best Alpha/Feature", "Value/Importance"]
 
-# Print results in a table
 print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
-##############
-
+#############################################################
 # ANALYZE RESULTS
 # The cross validated score represents the average performance of the best model with the best alpha (regularlization strength parameter) across 5 folds. 
+#############################################################
+
+#############################################################
+# L2 Ridge -- start here Monday to complete 
+#############################################################
+# Define the Ridge model
+ridge_model = Ridge(max_iter=2000, random_state=1)
+
+# Create the parameter grid for GridSearchCV
+# alphas = np.logspace(-6, 1, 50)  # going from 10^6 to 10^1 with 50 
+# alphas = np.logspace(-6, 2, 50)  # going from 10^(-6) to 10^2 with 50 
+alphas = np.logspace(-6, 2.5, 50)  # going from 10^(-6) to 10^(2.5) with 50 samples in logspace
+
+
+param_grid = {'alpha': alphas}
+
+# Create the GridSearchCV object
+grid_search = GridSearchCV(ridge_model, param_grid, scoring='neg_mean_squared_error', cv=5, n_jobs=-1)
+
+# Perform the grid search
+grid_search.fit(X_scaled, target)
+
+# Get the best alpha and its corresponding model
+best_alpha_ridge = grid_search.best_params_['alpha']
+best_model_ridge = grid_search.best_estimator_
+best_score_ridge = abs(grid_search.best_score_)
+########
+
+# Determine top 5 features
+feature_importances_ridge = pd.DataFrame({'Feature': joined_features.columns, 'Importance': np.abs(best_model_ridge.coef_.ravel())})
+top_5_features_ridge = feature_importances_ridge.nlargest(5, 'Importance') 
+
+
+results_data_ridge = [
+    ["Best Alpha", best_alpha_ridge],
+    ["Best Model Coefficients", best_model_ridge.coef_],
+    ["Best Model MSE", best_score_ridge],
+]
+headers = ["Metric: abs(MSE)", "Score"]
+print(tabulate(results_data_ridge, headers=headers, tablefmt="fancy_grid"))
+
+table_data_ridge = top_5_features_ridge.values.tolist() 
+headers= top_5_features_ridge.columns.tolist()  # Get column names as headers
+
+print(f"Best alpha: {best_alpha_ridge:.6f}")
+print(f"Best model MSE: {best_score_ridge:.4f}")
+print("\nTop 5 Features:")
+print(tabulate(table_data_ridge, headers=headers, tablefmt="fancy_grid"))  
+
+table_data_ridge = [
+    ["Best Alpha", best_alpha_ridge],
+    ["Best Model MSE", best_score_ridge]
+]
+# Add top 5 features to the table
+for _, row in top_5_features_ridge.iterrows():
+    table_data_ridge.append([row['Feature'], row['Importance']])
+headers = ["Metric/Best Alpha/Feature", "Value/Importance"]
+
+print(tabulate(table_data_ridge, headers=headers, tablefmt="fancy_grid"))
+
+#############################################################
+# ANALYZE RESULTS
+# 
+#############################################################
+
+#############################################################
+# ElasticNet
+#############################################################
+# Define the Elastic Net model
+elastic_net_model = ElasticNet(max_iter=2000, random_state=1)
+
+# Create the parameter grid for GridSearchCV
+alphas = np.logspace(-6, 1, 50)  # going from 10^6 to 10^1 with 50 samples in logspace
+l1_ratios = np.linspace(0, 1, 10)  # going from 0 to 1 with 10 samples in logspace
+param_grid = {'alpha': alphas, 'l1_ratio': l1_ratios}
+
+# Create the GridSearchCV object
+grid_search = GridSearchCV(elastic_net_model, param_grid, scoring='neg_mean_squared_error', cv=5, n_jobs=-1)
+
+# Perform the grid search
+grid_search.fit(X_scaled, target)
+
+# Get the best alpha and its corresponding model
+best_alpha = grid_search.best_params_['alpha']
+best_l1_ratio = grid_search.best_params_['l1_ratio']
+best_model = grid_search.best_estimator_
+best_score = abs(grid_search.best_score_)
+
+########
+
+results_data = [
+    ["Best Alpha", best_alpha],
+    ["Best Model Coefficients", best_model.coef_],
+    ["Best Model MSE", best_score],
+]
+headers = ["Metric: abs(MSE)", "Score"]
+print(tabulate(results_data, headers=headers, tablefmt="fancy_grid"))
+
+table_data = top_5_features.values.tolist() 
+headers = top_5_features.columns.tolist()  # Get column names as headers
+
+print(f"Best alpha: {best_alpha:.6f}")
+print(f"Best model MSE: {best_score:.4f}")
+print("\nTop 5 Features:")
+print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))  
+
+table_data = [
+    ["Best Alpha", best_alpha],
+    ["Best Model MSE", best_score]
+]
+# Add top 5 features to the table
+for _, row in top_5_features.iterrows():
+    table_data.append([row['Feature'], row['Importance']])
+headers = ["Metric/Best Alpha/Feature", "Value/Importance"]
+
+print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+
+#############################################################
+# ANALYZE RESULTS
+# 
+#############################################################
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -186,27 +334,23 @@ print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
 
 
+
+
+
+
+
+
+
+##############
+# NOTES BELOW 
 ##############
 # original # 02 lasso 
 import numpy as np 
-# alphas = np.logspace(-6,6,12)
-# alpha 
+
 alphas = np.logspace(-4, 1, 50)
-# we are going to print out the scores and see which one is the best 
-# we still need to fix the shuffling as well - the wide spread in values earlier was the clue 
+
 from sklearn.model_selection import KFold
-# now do an l1 
-#### lasso / l1 model ###
-# l1_model = Lasso(alpha=1)
-# l1_model = Lasso(alpha=1, max_iter=2000) 
-# splitter = KFold(n_splits=5, shuffle=True, random_state=1)
-# for sample in alphas: 
-#     l1_model.alpha = sample
-#     mse = cross_val_score(l1_model, X_scaled, target, cv=splitter, scoring='neg_mean_squared_error')
-#     l1_model.fit(X_scaled,target)
-#     print(mse.mean(), mse.std(), sample)
-#     print(l1_model.coef_)
-#     print('-------------')
+
 results = []
 # Manual Grid Search with Cross-Validation
 for sample in alphas:
