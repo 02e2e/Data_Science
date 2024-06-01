@@ -1,0 +1,106 @@
+## We have incomplete data 
+    - What do we do if its missing?
+    - Judge what the missing data should be? 
+    - Find a consistent way to fill these data. 
+    - To get model to work we have to put in some value for NANs and '?'
+
+## Missing Data Patterns
+    - 3 patterns
+    - MCAR - no pattern, no ryhym or reason 
+    - MAR - little confusing, control for a third variable and the pattern is random. (age, Class, Value, -- some values missing when class 2 is missing but not all class 2 are missing)
+    - NAR - patterns can be subtle, in this case class 2 always missing - this is NOT at random, think of this like if else statement logic 
+    - the pattern, and ID of pattern is the first step
+
+## Demo
+    - .describe (summary statistics) count column can tell us with the id that we have a certain number of rows, so we can see if other columns have less rows
+    - .shape - looks at shape to compare to give more insight 
+    - recommend in a raw format, look at it in excel to visually inspect the data to find the pattern 
+    - look for a change in behavior by scrolling up and down, then try and find the pattern using excel filters
+    - apply filters on excel 
+    - look for NA, NAN, ? - to find which values are missing, select the column that has missing dat one at a time
+    - scroll and compare to other columns like days, category, date, time, ID looking for correspondence as you scroll looking for visual pattern 
+    - if no pattern then MCAR 
+    - they could also be highly correlated and one just replaces with another. 
+    - he then goes one by one till he narrows it down on excel - your going to have to inspect and play with filters to establish a pattern 
+    - try to control for a third variable 
+    - you have to repeat this - maybe try using python due to size of spreadsheet 
+    - in jupyter notebook summary statistics and python code
+    - use describe to know missing data, look at shape, spit out names that dont match shape size 
+    - SEE NOTES from Mod Python in mod 4 
+    missing_data = raw_data.describe()
+    missing_data = columns 
+    for i in missing_data.columns: 
+        if mssing_data.loc  
+
+# Imputation of Missing Data 
+- option 1 ignore
+- method most common with summary statistics
+- find best estimate mean, median, mode, fit, sample
+- model to impute data 
+- whats the median or the mean 
+- whats the most common mode
+- use methods to figure out our best guess
+- we can try different models with different imputation methods 
+- you can also get rid of the data, only useful if 1-2% 
+- reducing data size pairwise deletion, not a favored method on larger datasets
+- list wise deletions, use summary statistics, using list wise you cant use linear regression, - summary stats median age, common value, etc. and this can be quite varied
+- final used method is use these values, if normally distributed data, you can replace missing value with the mean 
+- if wide range, you can use median to avoid outliers from shifting 
+- mode - categorical data missing value to be the most common guess
+- strongly correlated .5, to .9 we can drop the column one column with missing data, you can drop the data with missing data, highly correlated choice is up to you 
+- relatively small impact with the different methods
+- filling in data you will have to leverage our domain experience 
+- use mutliple methods and combine results - or you can flag your missing data, like if your data goes from 0 to 100 and you have missing value flag it as -100 signalling the model this value is very different 
+- make your best guesses 
+# Domain Knowledge
+- understanding your problem and the data to uncover insights
+- examples on educated guesses 
+# Imputation Demo
+raw_data.loc[:,[['full_sq','life_sq]]
+then does a correlation tyring to impute life-sq
+look to see what is correlated with life_sq what we want to imput
+raw_data.corr()
+weak correlation so its possible we can use full_sq to predict life_sq 
+we could just use all the full_sq
+drop life_sq
+or doing a fit 
+- lets see what it looks like without life_sq as if we jsut dropped it 
+raw_data.locpraw_data['life_sq'].isna(), ['full_sq','life_sq']
+raw_data.loc[raw_data['life_sq]].isna(), 'life_sq']
+# isolated all the missing data
+raw_data.loc[raw_data['life_sq]].isna(), 'full_sq']
+# now assign values
+raw_data.loc[raw_data['life_sq]].isna(), 'life_sq'] = raw_data.loc[raw_data['life_sq]].isna(), 'full_sq']
+# now check to see if they have been assigned
+but here we overwrote the previous data - so should have changed teh name imputed_data = raw_data before do the assignment above 
+# you could also create a new column if that makes sense like this if we wanted to halve the life_sq column values 
+raw_data['life_sq']/2
+
+# Step 1 impute missing values 
+
+# score for error 1 or 0 how far away from the actual value
+# logisitic regression is a classification model
+# natural log loss is the error function for logistic regression
+# two term loss function log loss function 
+# penalizing predictions that are far from the actual value
+# if prediction is close to 1 and target 1, then probability should be close to 1
+# if prediction is close to 0 and target 0, then probability should be close to 0
+# minimial loss means good predcitions, good well fit model 
+# prediction function - and log loss function - combine in similar fasion to linear regression
+# p contains the data x and a function of the slopes times x 
+# loss denoted with j 
+# update rule for logistic regression same as linear function 
+# sigmoid function has an update rule - when you take a derivative of the sigmoid function you get the sigmoid function times 1 minus the sigmoid function
+# this means we can use aglorithms to update the weights 
+
+# multi-class classification 
+# sigmoid only gives us a binary output
+# 1. one versus all - OVA - more classes create bias, suffer from unbalanced classes 
+# 2. one versus one - OVO - more classes create variance, expands quickly with mutliple classes, avoid with large number of classes -- summary outputs are average of head to heads, possible to have ties 
+# use sklearn to implement OVA or OVO
+# OVA is the default in sklearn
+# OVO is more accurate but slower, more memory intensive
+# OVA is faster, less memory intensive
+# 
+#  
+# 
