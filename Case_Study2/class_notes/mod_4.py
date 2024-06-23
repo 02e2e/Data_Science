@@ -155,7 +155,7 @@ df.loc[df[['max_floor','floor']]]
 df.loc[df['floor']]
 df.loc[df['max_floor']]
 
-slearn.impute.SimpleImputer
+sklearn.impute.SimpleImputer
 
 # solution to imputing with mode from live session exercise
 max_floor_mode = imputed_data['max_floor'].mode()[0]
